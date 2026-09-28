@@ -10,8 +10,16 @@ body[data-theme=light]{--bg:#f5f7fa;--panel:#fff;--panel2:#f8fafc;--border:#e3e7
 .sidebar-backdrop{display:none}
 
 @media(max-width:1000px){
+	.sidebar{transition:transform .28s cubic-bezier(.22,.8,.33,1);will-change:transform}
 	.sidebar-backdrop{display:block;position:fixed;inset:0;background:#0008;border:0;z-index:45}
 	.sidebar{z-index:60}
 	.mobile-top{z-index:70}
 	.sidebar-close{display:inline-flex}
+}
+
+.sidebar-backdrop{animation:fadeBackdrop .2s ease-out}
+
+@keyframes fadeBackdrop{
+	from{opacity:0}
+	to{opacity:1}
 }

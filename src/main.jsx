@@ -373,6 +373,17 @@ function Layout({user,setUser,locale,setLocale,t}){
   const [side,setSide]=useState(false),[dark,setDark]=useState(localStorage.getItem('mf-theme')!=='light'),[toast,setToast]=useState(''),loc=useLocation()
   useEffect(()=>{document.body.dataset.theme=dark?'dark':'light';localStorage.setItem('mf-theme',dark?'dark':'light')},[dark])
   useEffect(()=>{setSide(false)},[loc.pathname])
+  useEffect(()=>{
+    if(!side)return
+    const onEsc=e=>{if(e.key==='Escape')setSide(false)}
+    const prevOverflow=document.body.style.overflow
+    document.body.style.overflow='hidden'
+    window.addEventListener('keydown',onEsc)
+    return ()=>{
+      document.body.style.overflow=prevOverflow
+      window.removeEventListener('keydown',onEsc)
+    }
+  },[side])
   const notify=x=>{setToast(x);setTimeout(()=>setToast(''),2200)}
   function logout(){localStorage.removeItem('mf-session');setUser(null)}
   const routeNames={'/':t.dashboard,'/metricas':t.metrics,'/relatorios':t.reports,'/clientes':t.customers,'/integracoes':t.integrations,'/alertas':t.alerts,'/configuracoes':t.settingsTitle}
