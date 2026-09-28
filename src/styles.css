@@ -19,6 +19,16 @@ body[data-theme=light]{--bg:#f5f7fa;--panel:#fff;--panel2:#f8fafc;--border:#e3e7
 
 .sidebar-backdrop{animation:fadeBackdrop .2s ease-out}
 
+.notif-panel{position:fixed;top:76px;right:24px;width:min(320px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--border);border-radius:10px;z-index:120;box-shadow:0 20px 50px #0006;padding:10px}
+.notif-head{display:flex;align-items:center;justify-content:space-between;padding:6px 4px 8px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.notif-head b{font-size:11px}
+.notif-item{font-size:10px;color:var(--sub);padding:10px 6px;border-radius:8px}
+.notif-item:hover{background:var(--panel2)}
+
+@media(max-width:650px){
+	.notif-panel{top:62px;right:10px;width:calc(100vw - 20px)}
+}
+
 @keyframes fadeBackdrop{
 	from{opacity:0}
 	to{opacity:1}

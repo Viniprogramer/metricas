@@ -75,6 +75,7 @@ const copy={
     metricsText:'Explore indicators and trends with custom filters.',
     customDashboardSaved:'Custom dashboard saved',
     customize:'Customize',
+    apply:'Apply',
     topInsights:'Top insights',
     monthlyGoals:'Monthly goals',
     dataHub:'DATA HUB',
@@ -224,6 +225,7 @@ const copy={
     metricsText:'Explore indicadores e tendencias com filtros personalizados.',
     customDashboardSaved:'Dashboard personalizado salvo',
     customize:'Personalizar',
+    apply:'Aplicar',
     topInsights:'Principais insights',
     monthlyGoals:'Metas do mes',
     dataHub:'CENTRAL DE DADOS',
@@ -345,6 +347,22 @@ const normalizeError=(message,t)=>{
 const fmt=(n,locale)=>new Intl.NumberFormat(locale==='en'?'en-US':'pt-BR').format(n)
 const money=(n,locale)=>new Intl.NumberFormat(locale==='en'?'en-US':'pt-BR',{style:'currency',currency:'BRL'}).format(n)
 
+const byPeriod=(list,period)=>{
+  if(period==='today')return list.slice(-1)
+  if(period==='7d')return list.slice(-7)
+  return list
+}
+
+const downloadTextFile=(fileName,content)=>{
+  const blob=new Blob([content],{type:'text/plain;charset=utf-8'})
+  const url=URL.createObjectURL(blob)
+  const a=document.createElement('a')
+  a.href=url
+  a.download=fileName
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 function Brand(){return <div className="brand"><span className="brand-mark"><Activity size={17}/></span><span>METRIC<span>FORGE</span></span></div>}
 
 function Login({onLogin,locale,setLocale,t}) {
@@ -370,9 +388,10 @@ function Login({onLogin,locale,setLocale,t}) {
 }
 
 function Layout({user,setUser,locale,setLocale,t}){
-  const [side,setSide]=useState(false),[dark,setDark]=useState(localStorage.getItem('mf-theme')!=='light'),[toast,setToast]=useState(''),loc=useLocation()
+  const [side,setSide]=useState(false),[dark,setDark]=useState(localStorage.getItem('mf-theme')!=='light'),[toast,setToast]=useState(''),[period,setPeriod]=useState('30d'),[notifOpen,setNotifOpen]=useState(false),[notifRead,setNotifRead]=useState(false),loc=useLocation()
   useEffect(()=>{document.body.dataset.theme=dark?'dark':'light';localStorage.setItem('mf-theme',dark?'dark':'light')},[dark])
   useEffect(()=>{setSide(false)},[loc.pathname])
+  useEffect(()=>{setNotifOpen(false)},[loc.pathname])
   useEffect(()=>{
     if(!side)return
     const onEsc=e=>{if(e.key==='Escape')setSide(false)}
@@ -387,45 +406,66 @@ function Layout({user,setUser,locale,setLocale,t}){
   const notify=x=>{setToast(x);setTimeout(()=>setToast(''),2200)}
   function logout(){localStorage.removeItem('mf-session');setUser(null)}
   const routeNames={'/':t.dashboard,'/metricas':t.metrics,'/relatorios':t.reports,'/clientes':t.customers,'/integracoes':t.integrations,'/alertas':t.alerts,'/configuracoes':t.settingsTitle}
+  const notifications=notifRead?[]:[
+    {id:'n1',text:t.pendingAlerts},
+    {id:'n2',text:t.dataUpdatedNow},
+    {id:'n3',text:t.eventsLoaded}
+  ]
   return <div className="app">
     <aside className={'sidebar '+(side?'show':'')}><div className="sidebar-head"><Brand/><button className="sidebar-close" onClick={()=>setSide(false)} aria-label="Close menu"><X size={18}/></button></div><div className="workspace"><div className="workspace-icon">A</div><div><b>Acme Analytics</b><small>Pro workspace · Mock API</small></div><ChevronDown size={14}/></div>
       <nav><p>{t.overview}</p><NavLink to="/" onClick={()=>setSide(false)}><LayoutDashboard/>{t.dashboard}</NavLink><NavLink to="/metricas" onClick={()=>setSide(false)}><TrendingUp/>{t.metrics}</NavLink><NavLink to="/relatorios" onClick={()=>setSide(false)}><FileText/>{t.reports}</NavLink><p>{t.management}</p><NavLink to="/clientes" onClick={()=>setSide(false)}><Users/>{t.customers}</NavLink><NavLink to="/integracoes" onClick={()=>setSide(false)}><Cloud/>{t.integrations}</NavLink><NavLink to="/alertas" onClick={()=>setSide(false)}><Bell/>{t.alerts}</NavLink><p>{t.settings}</p><NavLink to="/configuracoes" onClick={()=>setSide(false)}><Settings/>{t.settingsTitle}</NavLink></nav>
       <div className="sidebar-bottom"><div className="plan"><b>{t.proPlan}</b><small>8.420 / 10.000 {t.events}</small><div className="progress"><i/></div></div><button onClick={logout}><LogOut size={15}/> {t.logout}</button></div>
     </aside>
     {side && <button className="sidebar-backdrop" onClick={()=>setSide(false)} aria-label="Close menu" />}
-    <div className="mobile-top"><button onClick={()=>setSide(!side)}><Menu/></button><span>METRIC<span>FORGE</span></span><button onClick={()=>notify(t.noNewNotifications)}><Bell size={19}/></button></div>
-    <div className="main"><header><div className="header-left"><button className="icon-btn menu-desktop" onClick={()=>setSide(!side)}><Menu size={19}/></button><div><span className="crumb">{t.workspaceCrumb}</span><b>{routeNames[loc.pathname]||t.dashboard}</b></div></div><div className="header-right"><div className="date-select"><span>{t.period}</span><select><option>{t.last30Days}</option><option>{t.last7Days}</option><option>{t.today}</option></select></div><select value={locale} onChange={e=>setLocale(e.target.value)}><option value="en">{t.english}</option><option value="pt-BR">{t.portuguese}</option></select><button className="icon-btn" onClick={()=>notify(t.dataUpdatedNow)}><RefreshCw size={17}/></button><button className="icon-btn notification" onClick={()=>notify(t.pendingAlerts)}><Bell size={17}/><i/></button><div className="user-mini"><div>{user.name[0].toUpperCase()}</div><span>{user.name}<small>{user.role}</small></span></div></div></header>
-      <main className="content"><Routes><Route path="/" element={<Dashboard notify={notify} locale={locale} t={t}/>} /><Route path="/metricas" element={<Metrics notify={notify} locale={locale} t={t}/>} /><Route path="/relatorios" element={<Reports notify={notify} locale={locale} t={t}/>} /><Route path="/clientes" element={<Customers notify={notify} locale={locale} t={t}/>} /><Route path="/integracoes" element={<Integrations notify={notify} locale={locale} t={t}/>} /><Route path="/alertas" element={<Alerts notify={notify} locale={locale} t={t}/>} /><Route path="/configuracoes" element={<SettingsPage dark={dark} setDark={setDark} notify={notify} t={t}/>} /></Routes></main>
+    <div className="mobile-top"><button onClick={()=>setSide(!side)}><Menu/></button><span>METRIC<span>FORGE</span></span><button onClick={()=>setNotifOpen(x=>!x)}><Bell size={19}/></button></div>
+    <div className="main"><header><div className="header-left"><button className="icon-btn menu-desktop" onClick={()=>setSide(!side)}><Menu size={19}/></button><div><span className="crumb">{t.workspaceCrumb}</span><b>{routeNames[loc.pathname]||t.dashboard}</b></div></div><div className="header-right"><div className="date-select"><span>{t.period}</span><select value={period} onChange={e=>setPeriod(e.target.value)}><option value="30d">{t.last30Days}</option><option value="7d">{t.last7Days}</option><option value="today">{t.today}</option></select></div><select value={locale} onChange={e=>setLocale(e.target.value)}><option value="en">{t.english}</option><option value="pt-BR">{t.portuguese}</option></select><button className="icon-btn" onClick={()=>notify(t.dataUpdatedNow)}><RefreshCw size={17}/></button><button className="icon-btn notification" onClick={()=>setNotifOpen(x=>!x)}><Bell size={17}/><i/></button><div className="user-mini"><div>{user.name[0].toUpperCase()}</div><span>{user.name}<small>{user.role}</small></span></div></div></header>
+      {notifOpen&&<div className="notif-panel"><div className="notif-head"><b>{t.notifications}</b><button className="text-btn" onClick={()=>setNotifRead(true)}>{t.viewAll}</button></div>{notifications.length?notifications.map(n=><div className="notif-item" key={n.id}>{n.text}</div>):<div className="notif-item">{t.noNewNotifications}</div>}</div>}
+      <main className="content"><Routes><Route path="/" element={<Dashboard notify={notify} locale={locale} period={period} t={t}/>} /><Route path="/metricas" element={<Metrics notify={notify} locale={locale} period={period} t={t}/>} /><Route path="/relatorios" element={<Reports notify={notify} locale={locale} t={t}/>} /><Route path="/clientes" element={<Customers notify={notify} locale={locale} t={t}/>} /><Route path="/integracoes" element={<Integrations notify={notify} locale={locale} t={t}/>} /><Route path="/alertas" element={<Alerts notify={notify} locale={locale} t={t}/>} /><Route path="/configuracoes" element={<SettingsPage dark={dark} setDark={setDark} notify={notify} t={t}/>} /></Routes></main>
     </div><Toast message={toast} onClose={()=>setToast('')}/></div>
 }
 
 function Title({eyebrow,title,text,children}){return <div className="page-title"><div><span className="eyebrow"><i/> {eyebrow}</span><h1>{title}</h1><p>{text}</p></div>{children}</div>}
 
-function Dashboard({notify,locale,t}){
+function Dashboard({notify,locale,period,t}){
   const [state,setState]=useState({loading:true,error:'',data:null})
   async function load(){setState({loading:true,error:'',data:null});try{const r=await api.dashboard();setState({loading:false,error:'',data:r.data})}catch(e){setState({loading:false,error:normalizeError(e.message,t),data:null})}}
   useEffect(()=>{load()},[])
   if(state.loading)return <><Title eyebrow={t.overview} title={t.dashboard} text={t.dashboardText}/><Loading text={t.loadingData}/></>
   if(state.error)return <><Title eyebrow={t.overview} title={t.dashboard} text={t.dashboardText}/><ErrorState message={state.error} retryLabel={t.retry} onRetry={load}/></>
   const {metrics,events}=state.data
-  const revenue=metrics.revenue.map(([month,value])=>({month:pick(month,locale,translations.month),value}))
-  const traffic=metrics.traffic.map(([day,value])=>({day:pick(day,locale,translations.day),value}))
+  const revenue=byPeriod(metrics.revenue,period).map(([month,value])=>({month:pick(month,locale,translations.month),value}))
+  const traffic=byPeriod(metrics.traffic,period).map(([day,value])=>({day:pick(day,locale,translations.day),value}))
   const cards=metrics.cards.map(x=>({...x,label:pick(x.label,locale,translations.card)}))
   const sources=metrics.sources.map(([name,value])=>[pick(name,locale,translations.source),value])
+  const visibleEvents=period==='today'?events.slice(0,2):period==='7d'?events.slice(0,3):events
+
+  async function createQuickReport(){
+    await api.reports.create({name:`${t.revenue} ${new Date().toISOString().slice(0,10)}`})
+    notify(t.reportCreatedApi)
+  }
+
+  function exportDashboard(){
+    const payload={period,revenue,traffic,sources,generatedAt:new Date().toISOString()}
+    downloadTextFile(`metricforge-dashboard-${period}.json`,JSON.stringify(payload,null,2))
+    notify(t.reportExported)
+  }
   return <>
-    <Title eyebrow={t.overview} title={t.dashboard} text={t.dataFromApi}><div className="title-actions"><button className="outline" onClick={()=>notify(t.exportReady)}><Download size={15}/> {t.export}</button><button className="primary" onClick={()=>notify(t.reportCreated)}><Plus size={16}/> {t.newReport}</button></div></Title>
+    <Title eyebrow={t.overview} title={t.dashboard} text={t.dataFromApi}><div className="title-actions"><button className="outline" onClick={exportDashboard}><Download size={15}/> {t.export}</button><button className="primary" onClick={createQuickReport}><Plus size={16}/> {t.newReport}</button></div></Title>
     <div className="live-bar"><span><i/> {t.apiConnected}</span><span>{t.lastUpdateNow}</span><button onClick={load}>{t.sync} <RefreshCw size={12}/></button></div>
     <div className="metric-grid">{cards.map((m,i)=>{const Icon=[CircleDollarSign,Users,TrendingUp,Wallet][i];return <div className="metric-card" key={m.label}><div className="metric-top"><span><Icon size={18}/></span><MoreHorizontal size={16}/></div><small>{m.label}</small><strong>{m.value}</strong><div className={m.type}>{m.type==='up'?<ArrowUpRight size={13}/>:<ArrowDownRight size={13}/>} {m.change}<em>{t.vsPreviousPeriod}</em></div></div>})}</div>
     <div className="grid-2"><div className="panel chart-panel"><div className="panel-head"><div><h2>{t.revenue}</h2><p>GET /dashboard</p></div><div className="api-chip">GET /dashboard</div></div><div className="chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={revenue}><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#756cff" stopOpacity=".3"/><stop offset="100%" stopColor="#756cff" stopOpacity="0"/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="var(--grid)"/><XAxis dataKey="month" stroke="var(--muted)" fontSize={11} tickLine={false} axisLine={false}/><YAxis stroke="var(--muted)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v=>`${money(v,locale).replace(',00','')}`}/><Tooltip contentStyle={{background:'var(--tooltip)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)'}} formatter={v=>[money(v,locale),t.revenue]}/><Area type="monotone" dataKey="value" stroke="#8078ff" strokeWidth={2.5} fill="url(#g)"/></AreaChart></ResponsiveContainer></div><div className="chart-foot"><span>● {t.revenue}</span><b>+18,4% ↗</b></div></div>
       <div className="panel"><div className="panel-head"><div><h2>{t.trafficSource}</h2><p>{t.sessionsDistribution}</p></div><span className="api-chip">REST</span></div><div className="source-chart"><div className="donut"><div><strong>18.2k</strong><small>{t.sessions}</small></div></div><div className="source-list">{sources.map((s,i)=><div key={s[0]}><span><i className={'source-dot s'+i}/>{s[0]}</span><b>{s[1]}%</b></div>)}</div></div><div className="panel-note"><Globe2 size={15}/> {t.organicGrew} <b>6,2%</b> {t.duringPeriod}</div></div>
     </div>
-    <div className="grid-2"><div className="panel"><div className="panel-head"><div><h2>{t.recentActivity}</h2><p>{t.eventsFromApi}</p></div><button className="text-btn" onClick={()=>notify(t.eventsLoaded)}>{t.viewAll} <ChevronRight size={13}/></button></div><div className="activity-list">{events.map(e=><div className="activity" key={e.id}><span className={'activity-icon '+e.type}>{e.type==='success'?<Check size={14}/>:e.type==='warning'?<Zap size={14}/>:<Users size={14}/>}</span><div><b>{e.title}</b><small>{e.detail}</small></div><time>{e.time.replace('Hoje',t.today)}</time></div>)}</div></div>
+    <div className="grid-2"><div className="panel"><div className="panel-head"><div><h2>{t.recentActivity}</h2><p>{t.eventsFromApi}</p></div><button className="text-btn" onClick={()=>notify(t.eventsLoaded)}>{t.viewAll} <ChevronRight size={13}/></button></div><div className="activity-list">{visibleEvents.map(e=><div className="activity" key={e.id}><span className={'activity-icon '+e.type}>{e.type==='success'?<Check size={14}/>:e.type==='warning'?<Zap size={14}/>:<Users size={14}/>}</span><div><b>{e.title}</b><small>{e.detail}</small></div><time>{e.time.replace('Hoje',t.today)}</time></div>)}</div></div>
       <div className="panel"><div className="panel-head"><div><h2>{t.activeUsers}</h2><p>{t.last7Days}</p></div><span className="live-tag">LIVE</span></div><div className="mini-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={traffic}><XAxis dataKey="day" hide/><YAxis hide/><Bar dataKey="value" fill="#6c63ff" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div><div className="active-total"><strong>18.294</strong><span>↗ 12,8% <small>{t.vsPreviousPeriod}</small></span></div></div></div>
   </>
 }
 
-function Metrics({notify,locale,t}){
+function Metrics({notify,locale,period,t}){
   const [loading,setLoading]=useState(true),[data,setData]=useState(null)
+  const [customOpen,setCustomOpen]=useState(false)
+  const [showInsights,setShowInsights]=useState(true)
+  const [showGoals,setShowGoals]=useState(true)
   async function load(){setLoading(true);const r=await api.dashboard();setData(r.data.metrics);setLoading(false)}
   useEffect(()=>{load()},[])
   if(loading)return <><Title eyebrow={t.explorer} title={t.metrics} text={t.metricsText}/><Loading text={t.loadingData}/></>
@@ -436,7 +476,7 @@ function Metrics({notify,locale,t}){
     ['Revenue accelerated 18.4% in the period.','Conversion reached the highest level in the last 90 days.','Organic traffic represents 38% of sessions.','Average ticket dropped 2.1% and deserves attention.']:
     ['Receita acelerou 18,4% no periodo.','Conversao atingiu o maior nivel dos ultimos 90 dias.','Trafego organico representa 38% das sessoes.','Ticket medio caiu 2,1% e merece atencao.']
   const goals=locale==='en'?[['Revenue',82],['New users',73],['Conversion',80]]:[['Receita',82],['Novos usuarios',73],['Conversao',80]]
-  return <><Title eyebrow={t.explorer} title={t.metrics} text={t.metricsText}><button className="outline" onClick={()=>notify(t.customDashboardSaved)}><SlidersHorizontal size={15}/> {t.customize}</button></Title><div className="metric-selector">{metricList.map(x=><button key={x[0]}><span>{x[0]}</span><b>{x[1]}</b></button>)}</div><div className="panel large-chart"><div className="panel-head"><div><h2>{t.revenue}</h2><p>GET /dashboard · {t.last30Days.toLowerCase()}</p></div><span className="api-chip">200 OK</span></div><ResponsiveContainer width="100%" height={390}><AreaChart data={data.revenue.map(([m,v])=>({m:pick(m,locale,translations.month),v}))}><CartesianGrid strokeDasharray="3 3" stroke="var(--grid)"/><XAxis dataKey="m" stroke="var(--muted)" tickLine={false} axisLine={false}/><YAxis stroke="var(--muted)" tickLine={false} axisLine={false}/><Tooltip contentStyle={{background:'var(--tooltip)',border:'1px solid var(--border)',borderRadius:8}} formatter={v=>money(v,locale)}/><Area type="monotone" dataKey="v" stroke="#7c73ff" fill="#756cff22" strokeWidth={3}/></AreaChart></ResponsiveContainer></div><div className="two-small"><div className="panel"><h2>{t.topInsights}</h2>{insights.map(x=><div className="insight" key={x}>✦ {x}<ChevronRight size={13}/></div>)}</div><div className="panel"><h2>{t.monthlyGoals}</h2>{goals.map(x=><div className="goal" key={x[0]}><div><span>{x[0]}</span><b>{x[1]}%</b></div><div className="goal-bar"><i style={{width:x[1]+'%'}}/></div></div>)}</div></div></>
+  return <><Title eyebrow={t.explorer} title={t.metrics} text={t.metricsText}><button className="outline" onClick={()=>setCustomOpen(true)}><SlidersHorizontal size={15}/> {t.customize}</button></Title><div className="metric-selector">{metricList.map(x=><button key={x[0]}><span>{x[0]}</span><b>{x[1]}</b></button>)}</div><div className="panel large-chart"><div className="panel-head"><div><h2>{t.revenue}</h2><p>GET /dashboard · {(period==='30d'?t.last30Days:period==='7d'?t.last7Days:t.today).toLowerCase()}</p></div><span className="api-chip">200 OK</span></div><ResponsiveContainer width="100%" height={390}><AreaChart data={byPeriod(data.revenue,period).map(([m,v])=>({m:pick(m,locale,translations.month),v}))}><CartesianGrid strokeDasharray="3 3" stroke="var(--grid)"/><XAxis dataKey="m" stroke="var(--muted)" tickLine={false} axisLine={false}/><YAxis stroke="var(--muted)" tickLine={false} axisLine={false}/><Tooltip contentStyle={{background:'var(--tooltip)',border:'1px solid var(--border)',borderRadius:8}} formatter={v=>money(v,locale)}/><Area type="monotone" dataKey="v" stroke="#7c73ff" fill="#756cff22" strokeWidth={3}/></AreaChart></ResponsiveContainer></div><div className="two-small">{showInsights&&<div className="panel"><h2>{t.topInsights}</h2>{insights.map(x=><div className="insight" key={x}>✦ {x}<ChevronRight size={13}/></div>)}</div>}{showGoals&&<div className="panel"><h2>{t.monthlyGoals}</h2>{goals.map(x=><div className="goal" key={x[0]}><div><span>{x[0]}</span><b>{x[1]}%</b></div><div className="goal-bar"><i style={{width:x[1]+'%'}}/></div></div>)}</div>}</div>{customOpen&&<Modal title={t.customize} onClose={()=>setCustomOpen(false)}><label><input type="checkbox" checked={showInsights} onChange={e=>setShowInsights(e.target.checked)} /> {t.topInsights}</label><label><input type="checkbox" checked={showGoals} onChange={e=>setShowGoals(e.target.checked)} /> {t.monthlyGoals}</label><button className="primary full" onClick={()=>{setCustomOpen(false);notify(t.customDashboardSaved)}}>{t.apply||'Apply'}</button></Modal>}</>
 }
 
 function Reports({notify,locale,t}){
